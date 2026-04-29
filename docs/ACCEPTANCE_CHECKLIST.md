@@ -12,7 +12,12 @@
 - [x] Game stores `currentFen`.
 - [x] Game stores `pgn` and embedded `moves`.
 - [x] Game has `status`, `winnerId`, `socketRoom`, `roomCode`, `turn`.
+- [x] Game has `timeControl` and `clocks`.
+- [x] Game status includes `timeout`.
+- [x] `currentFen` is the move-validation source of truth.
+- [x] `turn` is treated as a cache and validation uses `chess.turn()`.
 - [x] User, friend, game, conversation, and message indexes are declared.
+- [x] FriendRequest pending uniqueness uses a Mongoose partial index.
 
 ## 2. WebSocket Architecture
 
@@ -41,6 +46,7 @@
 - [x] Backend validates with chess.js before saving or broadcasting.
 - [x] Server checks game membership.
 - [x] Server checks turn ownership.
+- [x] Server computes turn ownership from `Chess(game.currentFen).turn()`.
 - [x] Server does not broadcast invalid moves.
 - [x] Server updates FEN and PGN after valid moves.
 

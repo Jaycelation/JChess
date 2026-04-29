@@ -21,13 +21,14 @@ export default function ChessGame({ token }) {
 
   const [connected, setConnected] = useState(false);
   const [socketStatus, setSocketStatus] = useState("Not connected");
-  const [matchmaking, setMatchmaking] = useState("idle");
+  const [uiStatus, setUiStatus] = useState("connecting");
   const [gameId, setGameId] = useState("");
   const [fen, setFen] = useState(initialChess.fen());
   const [pgn, setPgn] = useState("");
   const [color, setColor] = useState(null);
   const [turn, setTurn] = useState("w");
   const [gameStatus, setGameStatus] = useState("idle");
+  const [clocks, setClocks] = useState(null);
   const [opponent, setOpponent] = useState(null);
   const [lastMove, setLastMove] = useState(null);
   const [error, setError] = useState("");
@@ -43,16 +44,19 @@ export default function ChessGame({ token }) {
     socket.on("connect", () => {
       setConnected(true);
       setSocketStatus("Connected");
+      setUiStatus((previous) => (previous === "connecting" ? "idle" : previous));
     });
 
     socket.on("connect_error", (err) => {
       setConnected(false);
       setSocketStatus(err.message || "Socket connection failed");
+      setUiStatus("connecting");
     });
 
     socket.on("disconnect", () => {
       setConnected(false);
       setSocketStatus("Disconnected");
+      setUiStatus("connecting");
     });
 
     socket.on("socket:connected", (payload) => {
@@ -60,26 +64,27 @@ export default function ChessGame({ token }) {
     });
 
     socket.on("matchmaking:joined", () => {
-      setMatchmaking("searching");
+      setUiStatus("searching");
       setError("");
     });
 
     socket.on("matchmaking:cancelled", () => {
-      setMatchmaking("idle");
+      setUiStatus("idle");
     });
 
     socket.on("matchmaking:error", (payload) => {
       setError(payload.message);
-      setMatchmaking("idle");
+      setUiStatus("idle");
     });
 
     socket.on("matchmaking:matched", (payload) => {
-      setMatchmaking("matched");
+      setUiStatus("matched");
       setGameId(payload.gameId);
       setColor(payload.color);
       setOpponent(payload.opponent);
       setTurn(payload.turn);
       setGameStatus(payload.status);
+      setClocks(payload.clocks || null);
       setError("");
 
       const nextChess = new Chess(payload.initialFen);
@@ -90,12 +95,13 @@ export default function ChessGame({ token }) {
     });
 
     socket.on("room:ready", (payload) => {
-      setMatchmaking("matched");
+      setUiStatus("matched");
       setGameId(payload.gameId);
       setColor(payload.color);
       setOpponent(payload.opponent);
       setTurn(payload.turn);
       setGameStatus(payload.status);
+      setClocks(payload.clocks || null);
       setError("");
 
       const nextChess = new Chess(payload.initialFen);
@@ -112,7 +118,9 @@ export default function ChessGame({ token }) {
       setPgn(payload.pgn || "");
       setTurn(payload.turn);
       setGameStatus(payload.status);
+      setClocks(payload.clocks || null);
       setGameId(payload.gameId);
+      setUiStatus(payload.status === "active" ? "in_game" : "ended");
 
       const currentUserId = currentUserIdRef.current;
 
@@ -130,12 +138,15 @@ export default function ChessGame({ token }) {
       setPgn(payload.pgn || "");
       setTurn(payload.turn);
       setGameStatus(payload.status);
+      setClocks(payload.clocks || null);
       setLastMove(payload.move);
+      setUiStatus(payload.status === "active" ? "in_game" : "ended");
       setError("");
     });
 
     socket.on("game:ended", (payload) => {
       setGameStatus(payload.status);
+      setUiStatus("ended");
       setError(payload.winnerId ? `Game ended: ${payload.reason}` : "Game ended as draw");
     });
 
@@ -156,7 +167,7 @@ export default function ChessGame({ token }) {
       return;
     }
 
-    setMatchmaking("searching");
+    setUiStatus("searching");
     setError("");
     socketRef.current.emit("matchmaking:join", {
       timeControl: "rapid",
@@ -220,6 +231,8 @@ export default function ChessGame({ token }) {
 
   const boardOrientation = color === "black" ? "black" : "white";
   const statusTone = connected ? "text-emerald-700" : "text-red-700";
+  const canFindMatch = connected && !["searching", "matched", "in_game"].includes(uiStatus);
+  const canResign = Boolean(gameId) && uiStatus === "in_game" && gameStatus === "active";
 
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(320px,680px)_minmax(280px,360px)]">
@@ -248,7 +261,11 @@ export default function ChessGame({ token }) {
 
           <div className="grid gap-2 text-sm">
             <div className="flex justify-between gap-3">
-              <span className="text-stone-600">Status</span>
+              <span className="text-stone-600">UI state</span>
+              <span className="font-medium">{uiStatus}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-stone-600">Game</span>
               <span className="font-medium">{gameStatus}</span>
             </div>
             <div className="flex justify-between gap-3">
@@ -267,6 +284,14 @@ export default function ChessGame({ token }) {
               <span className="text-stone-600">Last move</span>
               <span className="font-medium">{lastMove?.san || "-"}</span>
             </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-stone-600">Clock</span>
+              <span className="font-medium">
+                {clocks
+                  ? `${Math.ceil(clocks.whiteMs / 1000)}s / ${Math.ceil(clocks.blackMs / 1000)}s`
+                  : "-"}
+              </span>
+            </div>
           </div>
 
           {error ? (
@@ -276,7 +301,7 @@ export default function ChessGame({ token }) {
           ) : null}
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {matchmaking === "searching" ? (
+            {uiStatus === "searching" ? (
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold"
                 type="button"
@@ -288,7 +313,7 @@ export default function ChessGame({ token }) {
             ) : (
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-boardDark px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!connected || gameStatus === "active"}
+                disabled={!canFindMatch}
                 type="button"
                 onClick={findMatch}
               >
@@ -299,7 +324,7 @@ export default function ChessGame({ token }) {
 
             <button
               className="inline-flex items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={!gameId || gameStatus !== "active"}
+              disabled={!canResign}
               type="button"
               onClick={resign}
             >
