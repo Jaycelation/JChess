@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Conversation } from "../models/Conversation.js";
 import { Friendship } from "../models/Friendship.js";
+import { Game } from "../models/Game.js";
 import { Message } from "../models/Message.js";
 import { User } from "../models/User.js";
 import {
@@ -144,7 +145,6 @@ function registerChatHandlers(io, socket, user) {
       }
 
       if (payload.type === "game_room") {
-        const { Game } = await import("../models/Game.js");
         const game = await Game.findById(payload.gameId);
 
         if (!game || !playerColor(game, user.id)) {

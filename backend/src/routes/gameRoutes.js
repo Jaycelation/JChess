@@ -105,6 +105,8 @@ router.get(
       socketRoom: game.socketRoom,
       roomCode: game.roomCode,
       roomType: game.roomType,
+      timeControl: game.timeControl,
+      clocks: game.clocks,
       turn: game.turn,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
