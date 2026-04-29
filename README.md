@@ -43,8 +43,7 @@ npm run dev:client
 
 ## MVP Flow
 
-- Register/login through REST.
-- Put the JWT in the client token field.
+- Register/login through the client form. The JWT is stored in `localStorage`.
 - Click Find Match in two browser sessions.
 - Server creates a MongoDB game, assigns colors, joins both sockets to `game:{gameId}`.
 - Client validates moves with chess.js before emitting.

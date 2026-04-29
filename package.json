@@ -2,12 +2,14 @@
   "name": "jchess",
   "private": true,
   "workspaces": [
-    "server",
+    "backend",
     "client"
   ],
   "scripts": {
-    "dev:server": "npm run dev -w server",
+    "dev:backend": "npm run dev -w backend",
+    "dev:server": "npm run dev -w backend",
     "dev:client": "npm run dev -w client",
+    "check:backend": "npm run check -w backend",
     "build:client": "npm run build -w client"
   }
 }

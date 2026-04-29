@@ -34,6 +34,46 @@ const disconnectSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const timeControlSchema = new mongoose.Schema(
+  {
+    label: {
+      type: String,
+      default: "rapid"
+    },
+    initialMs: {
+      type: Number,
+      default: 600000,
+      min: 0
+    },
+    incrementMs: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
+  },
+  { _id: false }
+);
+
+const clockSchema = new mongoose.Schema(
+  {
+    whiteMs: {
+      type: Number,
+      default: 600000,
+      min: 0
+    },
+    blackMs: {
+      type: Number,
+      default: 600000,
+      min: 0
+    },
+    lastMoveAt: {
+      type: Date,
+      default: null
+    }
+  },
+  { _id: false }
+);
+
 const gameSchema = new mongoose.Schema(
   {
     whitePlayerId: {
@@ -46,6 +86,7 @@ const gameSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    // Source of truth for board position and active side.
     currentFen: {
       type: String,
       default: START_FEN,
@@ -61,7 +102,7 @@ const gameSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["waiting", "active", "checkmate", "draw", "resigned", "abandoned"],
+      enum: ["waiting", "active", "checkmate", "draw", "resigned", "abandoned", "timeout"],
       default: "waiting"
     },
     winnerId: {
@@ -82,6 +123,15 @@ const gameSchema = new mongoose.Schema(
       enum: ["matchmaking", "private"],
       default: "matchmaking"
     },
+    timeControl: {
+      type: timeControlSchema,
+      default: () => ({ label: "rapid", initialMs: 600000, incrementMs: 0 })
+    },
+    clocks: {
+      type: clockSchema,
+      default: () => ({ whiteMs: 600000, blackMs: 600000, lastMoveAt: null })
+    },
+    // Cached for reads only. Move validation derives the active side from currentFen.
     turn: {
       type: String,
       enum: ["w", "b"],
